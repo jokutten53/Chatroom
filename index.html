@@ -183,6 +183,18 @@
             object-fit: cover;
         }
 
+        /* Typing Indicator Styling */
+        #typingIndicator {
+            padding: 5px 20px;
+            font-size: 0.85rem;
+            color: var(--primary);
+            font-style: italic;
+            background: rgba(255, 255, 255, 0.5);
+            min-height: 20px;
+            display: flex;
+            align-items: center;
+        }
+
         /* Chat Box */
         #chatBox {
             flex: 1;
@@ -212,7 +224,6 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
-        /* Image styling inside chat bubbles */
         .chat-image {
             max-width: 100%;
             border-radius: 12px;
@@ -253,7 +264,7 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
-        /* Input Area with Image Upload */
+        /* Input Area */
         .input-area {
             display: flex;
             padding: 15px;
@@ -350,8 +361,10 @@
 
             <div id="chatBox"></div>
             
+            <!-- Live Typing Indicator Banner -->
+            <div id="typingIndicator"></div>
+            
             <div class="input-area">
-                <!-- New Image Upload Button -->
                 <label for="imageUpload" class="img-upload-btn">📷</label>
                 <input type="file" id="imageUpload" accept="image/*" class="hidden">
                 
@@ -383,11 +396,13 @@
 
         let myName = "";
         let isAdmin = false;
-        let selectedImageBase64 = null; // Stores the image before sending
+        let selectedImageBase64 = null;
+        let typingTimeout;
 
         const chatBox = document.getElementById('chatBox');
         const messageInput = document.getElementById('messageInput');
         const imageUpload = document.getElementById('imageUpload');
+        const typingIndicator = document.getElementById('typingIndicator');
         
         // --- AUTHENTICATION ---
         window.joinGuest = () => {
@@ -416,6 +431,51 @@
             document.getElementById('chatScreen').style.display = "flex";
             startChatListening();
             listenForCalls();
+            listenForTyping(); // Start monitoring typing changes
+            
+            // Clean up typing status if user suddenly closes window
+            onDisconnect(dbRef(db, `typing/${myName}`)).remove();
+        }
+
+        // --- TYPING INDICATOR CONTROLLER ---
+        // Triggers whenever user strikes a key in the text field
+        messageInput.addEventListener('input', () => {
+            if (myName === "") return;
+
+            // Instantly update database that we are typing
+            set(dbRef(db, `typing/${myName}`), true);
+
+            // Clear any countdown that was running previously
+            clearTimeout(typingTimeout);
+
+            // If user doesn't press another key within 2.5 seconds, set status to false
+            typingTimeout = setTimeout(() => {
+                set(dbRef(db, `typing/${myName}`), false);
+            }, 2500);
+        });
+
+        function listenForTyping() {
+            onValue(dbRef(db, 'typing'), (snapshot) => {
+                if (snapshot.exists()) {
+                    const typingUsers = snapshot.val();
+                    let currentTypers = [];
+
+                    for (let user in typingUsers) {
+                        // Check if someone ELSE is typing right now
+                        if (user !== myName && typingUsers[user] === true) {
+                            currentTypers.push(user);
+                        }
+                    }
+
+                    if (currentTypers.length > 0) {
+                        typingIndicator.innerHTML = `💬 ${currentTypers.join(', ')} is typing...`;
+                    } else {
+                        typingIndicator.innerHTML = ''; // Hide banner if empty
+                    }
+                } else {
+                    typingIndicator.innerHTML = '';
+                }
+            });
         }
 
         // --- IMAGE ATTACHMENT LOGIC ---
@@ -428,7 +488,7 @@
                 const img = new Image();
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
-                    const MAX_SIZE = 400; // Compresses image to max 400px so database is fast
+                    const MAX_SIZE = 400; 
                     let width = img.width;
                     let height = img.height;
 
@@ -443,10 +503,7 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    // Convert to text string
                     selectedImageBase64 = canvas.toDataURL('image/jpeg', 0.6);
-                    
-                    // Let the user know the image is ready to send
                     messageInput.placeholder = "📷 Image attached! Add text or send...";
                 };
                 img.src = event.target.result;
@@ -459,8 +516,6 @@
 
         window.sendMessage = async () => {
             const text = messageInput.value.trim();
-            
-            // Don't send if there is no text AND no image
             if (text === "" && !selectedImageBase64) return;
             
             const now = Date.now();
@@ -471,14 +526,17 @@
                 text: text, 
                 time: timeString, 
                 timestamp: now,
-                imageUrl: selectedImageBase64 || null // Add image to database!
+                imageUrl: selectedImageBase64 || null 
             };
             
-            // Reset inputs instantly
             messageInput.value = "";
             messageInput.placeholder = "Type a message...";
             imageUpload.value = "";
             selectedImageBase64 = null;
+            
+            // Instantly tell database we are no longer typing since message is sent
+            set(dbRef(db, `typing/${myName}`), false);
+            clearTimeout(typingTimeout);
             
             await push(dbRef(db, 'messages'), msgData);
         };
@@ -495,24 +553,16 @@
                 const msgElement = document.createElement('div');
                 msgElement.className = data.sender === myName ? "message my-msg" : "message other-msg";
                 
-                // Build the HTML for inside the bubble
                 let bubbleContent = '';
-                
                 if (data.sender !== myName) {
                     bubbleContent += `<div class="msg-sender-name">${data.sender}</div>`;
                 }
-                
-                // If the message has an image, show it!
                 if (data.imageUrl) {
                     bubbleContent += `<img src="${data.imageUrl}" class="chat-image" alt="Shared Image">`;
                 }
-                
-                // Add the text
                 if (data.text) {
                     bubbleContent += `<div>${data.text}</div>`;
                 }
-                
-                // Add the time
                 bubbleContent += `<span class="timestamp">${data.time}</span>`;
 
                 msgElement.innerHTML = bubbleContent;
@@ -564,7 +614,7 @@
             }
         };
 
-        // --- VIDEO CALL LOGIC (WebRTC) ---
+        // --- VIDEO CALL LOGIC ---
         let pc, localStream, remoteStream;
         const localVideo = document.getElementById('localVideo');
         const remoteVideo = document.getElementById('remoteVideo');
