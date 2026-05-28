@@ -2,329 +2,165 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Private Cloud Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Private Chat by Joyal</title>
     <style>
         :root {
-            --primary: #6c5ce7;
-            --secondary: #a29bfe;
-            --glass-bg: rgba(255, 255, 255, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.5);
-            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
-            --text-dark: #2d3436;
+            --primary: #0095f6; /* Instagram Blue */
+            --bg-color: #fafafa;
+            --chat-bg: #ffffff;
+            --text-dark: #262626;
+            --bubble-other: #efefef;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: linear-gradient(-45deg, #ff9a9e, #fecfef, #a1c4fd, #c2e9fb);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-            color: var(--text-dark);
-        }
-
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; padding: 0;
+            background-color: var(--bg-color);
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; overscroll-behavior-y: contain;
         }
 
         .app-container {
-            width: 100%;
-            max-width: 650px;
-            height: 95vh;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            box-shadow: var(--glass-shadow);
-            backdrop-filter: blur(12px);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            position: relative;
+            width: 100%; max-width: 500px; height: 100vh;
+            background: var(--chat-bg);
+            display: flex; flex-direction: column;
+            position: relative; overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
         }
 
-        /* Login Screen */
+        /* --- LOGIN SCREEN --- */
         #loginScreen {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            padding: 2rem;
-            text-align: center;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            height: 100%; padding: 2rem; text-align: center; background: white;
         }
-
-        .login-box {
-            background: rgba(255, 255, 255, 0.5);
-            padding: 2rem;
-            border-radius: 16px;
-            width: 80%;
-            max-width: 350px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            margin-bottom: 1rem;
-        }
-
-        #loginScreen h2 { margin-top: 0; color: var(--primary); }
+        .login-box { width: 100%; max-width: 300px; }
+        .login-box img { width: 80px; margin-bottom: 10px; }
+        .login-box h2 { color: var(--text-dark); margin-bottom: 20px; font-weight: 600; }
         
-        #loginScreen input {
-            padding: 1rem;
-            width: 100%;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            margin-bottom: 1rem;
-            font-size: 1rem;
-            box-sizing: border-box;
-            outline: none;
-            transition: 0.3s;
+        select, input {
+            width: 100%; padding: 12px; margin-bottom: 15px;
+            border-radius: 8px; border: 1px solid #dbdbdb;
+            background: #fafafa; font-size: 1rem; box-sizing: border-box; outline: none;
         }
-        #loginScreen input:focus { border-color: var(--primary); }
+        input:focus, select:focus { border-color: #a8a8a8; }
+        
+        .btn-main {
+            width: 100%; padding: 12px; border-radius: 8px; border: none;
+            background: var(--primary); color: white; font-weight: bold;
+            font-size: 1rem; cursor: pointer; transition: 0.2s;
+        }
+        .btn-main:active { opacity: 0.7; }
+        
+        .divider { margin: 20px 0; color: #8e8e8e; font-size: 0.85rem; font-weight: bold; }
+        
+        .credit-footer {
+            position: absolute; bottom: 20px; font-size: 0.85rem;
+            color: #8e8e8e; font-weight: 500; letter-spacing: 1px;
+        }
+        .credit-footer span { color: var(--primary); font-weight: bold; }
 
-        button {
-            padding: 0.8rem 1.5rem;
-            border-radius: 8px;
-            border: none;
-            background: var(--primary);
-            color: white;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(108, 92, 231, 0.3);
-            transition: all 0.2s;
-            width: 100%;
-        }
-        button:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(108, 92, 231, 0.4); }
-
-        .divider {
-            margin: 1.5rem 0;
-            border-bottom: 1px solid rgba(0,0,0,0.1);
-            position: relative;
-        }
-        .divider span {
-            position: absolute;
-            top: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #f7f9fc;
-            padding: 0 10px;
-            font-size: 0.8rem;
-            color: #888;
-            border-radius: 5px;
-        }
-
-        /* Chat Screen */
-        #chatScreen {
-            display: none;
-            flex-direction: column;
-            height: 100%;
-        }
+        /* --- CHAT SCREEN --- */
+        #chatScreen { display: none; flex-direction: column; height: 100%; }
 
         header {
-            background: rgba(255, 255, 255, 0.9);
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
+            background: white; padding: 15px; display: flex; flex-direction: column;
+            border-bottom: 1px solid #dbdbdb; z-index: 10;
         }
-
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--primary);
-        }
-
+        .header-top { display: flex; justify-content: space-between; align-items: center; }
+        .room-title { font-weight: bold; font-size: 1.1rem; color: var(--text-dark); }
+        
         .header-buttons button {
-            width: auto;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            margin-left: 5px;
+            padding: 8px 15px; border-radius: 20px; border: none;
+            font-weight: bold; cursor: pointer; font-size: 0.9rem;
         }
-        #startCallBtn { background: #00b894; box-shadow: 0 4px 10px rgba(0, 184, 148, 0.3); }
-        #answerCallBtn { background: #fdcb6e; animation: pulse 1.5s infinite; color: #2d3436; }
-        #hangupBtn { background: #d63031; }
-
-        /* Admin Toolbar */
+        #startCallBtn { background: var(--text-dark); color: white; }
+        #answerCallBtn { background: #4cd137; color: white; animation: pulse 1.5s infinite; }
+        
+        /* Admin Top Bar */
         #adminToolbar {
-            display: none;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #eee;
-            gap: 10px;
-            justify-content: center;
+            display: none; background: #fff3f3; padding: 8px;
+            border-radius: 8px; margin-top: 10px; gap: 10px; justify-content: center;
         }
-        #adminToolbar button {
-            width: auto;
-            background: #ff7675;
-            padding: 5px 12px;
-            font-size: 0.8rem;
-        }
-        #adminToolbar button:hover { background: #d63031; }
+        #adminToolbar button { background: #ff7675; color: white; border: none; padding: 5px 10px; border-radius: 5px; font-size: 0.8rem; }
 
-        /* Video Area */
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        /* --- INSTA VIDEO CALL UI --- */
         #videoArea {
-            display: none;
-            background: #111;
-            padding: 10px;
-            justify-content: space-around;
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 100; flex-direction: column;
         }
-        video {
-            width: 48%;
-            background: #000;
-            border-radius: 12px;
-            object-fit: cover;
+        #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
+        #localVideo {
+            position: absolute; bottom: 100px; right: 20px;
+            width: 110px; height: 160px; border-radius: 12px;
+            object-fit: cover; border: 2px solid rgba(255,255,255,0.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 101;
         }
-
-        /* Typing Indicator */
-        #typingIndicator {
-            padding: 5px 20px;
-            font-size: 0.85rem;
-            color: var(--primary);
-            font-style: italic;
-            background: rgba(255, 255, 255, 0.5);
-            min-height: 20px;
-            display: flex;
-            align-items: center;
+        .call-controls {
+            position: absolute; bottom: 30px; left: 0; width: 100%;
+            display: flex; justify-content: center; z-index: 102;
+        }
+        #hangupBtn {
+            background: #ff4757; color: white; width: 60px; height: 60px;
+            border-radius: 50%; border: none; font-size: 1.5rem; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
 
-        /* Chat Box */
+        /* --- CHAT BOX --- */
         #chatBox {
-            flex: 1;
-            padding: 1.5rem;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .message-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            max-width: 100%;
-        }
-
-        .message {
-            max-width: 75%;
-            padding: 12px 18px;
-            border-radius: 20px;
-            font-size: 1rem;
-            line-height: 1.4;
-            position: relative;
-            word-wrap: break-word;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .chat-image {
-            max-width: 100%;
-            border-radius: 12px;
-            margin-bottom: 5px;
-            display: block;
+            flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column;
+            gap: 10px; background: var(--bg-color);
         }
         
-        .chat-audio {
-            max-width: 100%;
-            height: 40px;
-            margin-bottom: 5px;
-            outline: none;
+        #typingIndicator { font-size: 0.8rem; color: #8e8e8e; padding: 0 15px 5px; min-height: 15px; }
+
+        .message-wrapper { display: flex; align-items: center; gap: 8px; width: 100%; }
+        .message {
+            max-width: 75%; padding: 10px 15px; border-radius: 22px;
+            font-size: 0.95rem; line-height: 1.4; position: relative; word-wrap: break-word;
         }
 
-        .msg-sender-name {
-            font-size: 0.75rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-            color: var(--primary);
-        }
+        .chat-image { max-width: 100%; border-radius: 12px; margin-bottom: 5px; display: block; }
+        .chat-audio { max-width: 200px; height: 35px; margin-bottom: 5px; }
 
+        .msg-sender-name { font-size: 0.7rem; font-weight: bold; margin-bottom: 4px; color: #8e8e8e; }
+        
         .my-msg-wrapper { justify-content: flex-end; }
         .my-msg { background: var(--primary); color: white; border-bottom-right-radius: 4px; }
-        .my-msg .msg-sender-name { color: #dff9fb; }
         .my-msg .timestamp { color: rgba(255,255,255,0.7); }
 
         .other-msg-wrapper { justify-content: flex-start; }
-        .other-msg { background: white; border-bottom-left-radius: 4px; border: 1px solid #eee; }
+        .other-msg { background: var(--bubble-other); color: var(--text-dark); border-bottom-left-radius: 4px; border: 1px solid #e0e0e0; }
 
-        .timestamp { font-size: 0.65rem; color: #aaa; text-align: right; margin-top: 5px; display: block; }
+        .timestamp { font-size: 0.65rem; color: #a8a8a8; text-align: right; margin-top: 5px; display: block; }
 
         .del-btn {
-            background: #ff7675;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 25px;
-            height: 25px;
-            font-size: 0.7rem;
-            cursor: pointer;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            padding: 0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            background: #ff7675; color: white; border: none; border-radius: 50%;
+            width: 20px; height: 20px; font-size: 0.6rem; cursor: pointer; display: none;
         }
 
-        /* Input Area */
+        /* --- INPUT AREA --- */
         .input-area {
-            display: flex;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.9);
-            border-top: 1px solid rgba(0,0,0,0.05);
-            align-items: center;
+            display: flex; padding: 10px 15px; background: white;
+            border-top: 1px solid #dbdbdb; align-items: center; gap: 10px;
         }
-
-        .action-btn {
-            background: #dfe6e9;
-            color: #2d3436;
-            border-radius: 50%;
-            width: 45px;
-            height: 45px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.2rem;
-            cursor: pointer;
-            margin-right: 8px;
-            transition: background 0.3s;
-            border: none;
-            padding: 0;
+        .action-icon {
+            font-size: 1.4rem; cursor: pointer; color: var(--text-dark);
+            background: none; border: none; padding: 5px;
         }
-        .action-btn:hover { background: #b2bec3; }
-
         .input-area input[type="text"] {
-            flex: 1;
-            padding: 15px 20px;
-            border-radius: 30px;
-            border: 1px solid #ddd;
-            outline: none;
-            font-size: 1rem;
-            background: #f8f9fa;
+            flex: 1; padding: 10px 15px; border-radius: 20px;
+            border: 1px solid #dbdbdb; outline: none; font-size: 0.95rem; background: #fafafa;
         }
-        .input-area input[type="text"]:focus { border-color: var(--primary); background: #fff; }
+        .input-area input[type="text"]:focus { border-color: #a8a8a8; }
+        
+        /* Mic Button Effects */
+        #micBtn { transition: 0.2s transform; user-select: none; -webkit-user-select: none; }
+        .recording-active { color: #ff4757 !important; transform: scale(1.3); }
 
-        .send-btn {
-            background: var(--primary);
-            color: white;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            margin-left: 8px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 0;
-            font-size: 1.2rem;
-            border: none;
-            cursor: pointer;
-        }
-
+        .send-btn { color: var(--primary); font-weight: bold; background: none; border: none; cursor: pointer; font-size: 1rem; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -334,54 +170,62 @@
         
         <div id="loginScreen">
             <div class="login-box">
-                <h2>✨ Join Chat</h2>
+                <h2>Chat Room</h2>
                 
+                <select id="roomSelect">
+                    <option value="general">🌍 General Room</option>
+                    <option value="family">🏠 Family Room</option>
+                    <option value="gaming">🎮 Gaming Room</option>
+                </select>
+
                 <input type="text" id="guestName" placeholder="Your Name">
-                <button onclick="joinGuest()">Enter as Guest</button>
+                <button class="btn-main" onclick="joinGuest()">Join Chat</button>
                 
-                <div class="divider"><span>OR</span></div>
+                <div class="divider">ADMIN LOGIN</div>
                 
-                <input type="text" id="adminUser" placeholder="Admin Username">
-                <input type="password" id="adminPass" placeholder="Admin Password">
-                <button onclick="joinAdmin()" style="background: #2d3436;">Admin Login</button>
-                
-                <p id="loginError" style="color: #d63031; display: none; font-size: 0.9rem; margin-top: 10px;">Incorrect credentials!</p>
+                <input type="text" id="adminUser" placeholder="Username">
+                <input type="password" id="adminPass" placeholder="Password">
+                <button class="btn-main" style="background: var(--text-dark);" onclick="joinAdmin()">Log In</button>
+                <p id="loginError" style="color: #ff4757; display: none; font-size: 0.85rem; margin-top: 10px;">Incorrect details</p>
             </div>
+            <div class="credit-footer">Made by <span>Joyal</span></div>
         </div>
 
         <div id="chatScreen">
             <header>
                 <div class="header-top">
-                    <span>🔒 Private Chat & Video Room</span>
+                    <span class="room-title" id="roomTitleDisplay">Room</span>
                     <div class="header-buttons">
-                        <button id="startCallBtn" onclick="startCall()">🎥 Call</button>
-                        <button id="answerCallBtn" onclick="answerCall()" class="hidden">📞 Answer!</button>
-                        <button id="hangupBtn" onclick="hangup()" class="hidden">❌ End</button>
+                        <button id="startCallBtn" onclick="startCall()">🎥 Video Call</button>
+                        <button id="answerCallBtn" onclick="answerCall()" class="hidden">📞 Answer Call</button>
                     </div>
                 </div>
                 <div id="adminToolbar">
-                    <button onclick="clearAllMessages()">🗑️ Clear All Chat</button>
-                    <button onclick="clearOldMessages()">⏳ Delete > 1 Hour</button>
+                    <span style="font-size:0.8rem; font-weight:bold; color:#ff4757;">Admin Controls:</span>
+                    <button onclick="clearAllMessages()">Wipe Chat</button>
+                    <button onclick="clearOldMessages()">Del > 1hr</button>
                 </div>
             </header>
             
             <div id="videoArea">
-                <video id="localVideo" autoplay muted playsinline></video>
                 <video id="remoteVideo" autoplay playsinline></video>
+                <video id="localVideo" autoplay muted playsinline></video>
+                <div class="call-controls">
+                    <button id="hangupBtn" onclick="hangup()">📴</button>
+                </div>
             </div>
 
             <div id="chatBox"></div>
-            
             <div id="typingIndicator"></div>
             
             <div class="input-area">
-                <label for="imageUpload" class="action-btn">📷</label>
+                <label for="imageUpload" class="action-icon">📷</label>
                 <input type="file" id="imageUpload" accept="image/*" class="hidden">
                 
-                <button id="micBtn" class="action-btn" onclick="toggleRecording()">🎙️</button>
+                <button id="micBtn" class="action-icon">🎙️</button>
                 
-                <input type="text" id="messageInput" placeholder="Type a message..." onkeypress="handleEnter(event)">
-                <button class="send-btn" onclick="sendMessage()">➤</button>
+                <input type="text" id="messageInput" placeholder="Message..." onkeypress="handleEnter(event)">
+                <button class="send-btn" onclick="sendMessage()">Send</button>
             </div>
         </div>
 
@@ -399,8 +243,7 @@
             projectId: "familydictionary6253",
             storageBucket: "familydictionary6253.firebasestorage.app",
             messagingSenderId: "1051186279461",
-            appId: "1:1051186279461:web:808fbc49a821ce51bd7bcc",
-            measurementId: "G-90G48CK8RE"
+            appId: "1:1051186279461:web:808fbc49a821ce51bd7bcc"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -408,30 +251,27 @@
 
         let myName = "";
         let isAdmin = false;
+        let currentRoom = "";
         let selectedImageBase64 = null;
         let typingTimeout;
 
         const chatBox = document.getElementById('chatBox');
         const messageInput = document.getElementById('messageInput');
-        const imageUpload = document.getElementById('imageUpload');
         const typingIndicator = document.getElementById('typingIndicator');
         const micBtn = document.getElementById('micBtn');
         
-        // --- AUTHENTICATION ---
+        // --- AUTH & ROOMS ---
         window.joinGuest = () => {
             const input = document.getElementById('guestName').value.trim();
             if (input === "") return alert("Please enter your name!");
-            myName = input;
-            isAdmin = false;
-            enterRoom();
+            myName = input; isAdmin = false; enterRoom();
         };
 
         window.joinAdmin = () => {
             const u = document.getElementById('adminUser').value;
             const p = document.getElementById('adminPass').value;
             if (u === 'joyal' && p === '7012') {
-                myName = "Joyal (Admin)";
-                isAdmin = true;
+                myName = "Joyal"; isAdmin = true;
                 document.getElementById('adminToolbar').style.display = "flex";
                 enterRoom();
             } else {
@@ -440,40 +280,40 @@
         };
 
         function enterRoom() {
+            const roomSelector = document.getElementById('roomSelect');
+            currentRoom = roomSelector.value;
+            document.getElementById('roomTitleDisplay').innerText = roomSelector.options[roomSelector.selectedIndex].text;
+            
             document.getElementById('loginScreen').style.display = "none";
             document.getElementById('chatScreen').style.display = "flex";
+            
             startChatListening();
             listenForCalls();
             listenForTyping();
-            onDisconnect(dbRef(db, `typing/${myName}`)).remove();
+            onDisconnect(dbRef(db, `rooms/${currentRoom}/typing/${myName}`)).remove();
         }
 
-        // --- TYPING INDICATOR ---
+        // --- TYPING ---
         messageInput.addEventListener('input', () => {
             if (myName === "") return;
-            set(dbRef(db, `typing/${myName}`), true);
+            set(dbRef(db, `rooms/${currentRoom}/typing/${myName}`), true);
             clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => { set(dbRef(db, `typing/${myName}`), false); }, 2500);
+            typingTimeout = setTimeout(() => { set(dbRef(db, `rooms/${currentRoom}/typing/${myName}`), false); }, 2500);
         });
 
         function listenForTyping() {
-            onValue(dbRef(db, 'typing'), (snapshot) => {
+            onValue(dbRef(db, `rooms/${currentRoom}/typing`), (snapshot) => {
                 if (snapshot.exists()) {
-                    const typingUsers = snapshot.val();
                     let currentTypers = [];
-                    for (let user in typingUsers) {
-                        if (user !== myName && typingUsers[user] === true) currentTypers.push(user);
-                    }
-                    if (currentTypers.length > 0) typingIndicator.innerHTML = `💬 ${currentTypers.join(', ')} is typing...`;
+                    snapshot.forEach(child => { if (child.key !== myName && child.val() === true) currentTypers.push(child.key); });
+                    if (currentTypers.length > 0) typingIndicator.innerHTML = `${currentTypers.join(', ')} is typing...`;
                     else typingIndicator.innerHTML = ''; 
-                } else {
-                    typingIndicator.innerHTML = '';
-                }
+                } else { typingIndicator.innerHTML = ''; }
             });
         }
 
-        // --- IMAGE ATTACHMENT ---
-        imageUpload.addEventListener('change', function(e) {
+        // --- IMAGES ---
+        document.getElementById('imageUpload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
@@ -481,218 +321,137 @@
                 const img = new Image();
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
-                    const MAX_SIZE = 400; 
-                    let width = img.width;
-                    let height = img.height;
-                    if (width > height) {
-                        if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
-                    } else {
-                        if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    
+                    const MAX_SIZE = 400; let width = img.width; let height = img.height;
+                    if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } 
+                    else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+                    canvas.width = width; canvas.height = height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
                     selectedImageBase64 = canvas.toDataURL('image/jpeg', 0.6);
-                    messageInput.placeholder = "📷 Image attached! Add text or send...";
+                    messageInput.placeholder = "📷 Image attached!";
                 };
                 img.src = event.target.result;
             };
             reader.readAsDataURL(file);
         });
 
-        // --- VOICE MESSAGING ---
+        // --- HOLD TO TALK VOICE NOTES ---
         let mediaRecorder;
         let audioChunks = [];
         let isRecording = false;
 
-        window.toggleRecording = async () => {
-            if (!isRecording) {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-                    
-                    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-                    
-                    mediaRecorder.onstop = () => {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        const reader = new FileReader();
-                        reader.onload = async (event) => {
-                            const audioBase64 = event.target.result;
-                            await sendAudioMessage(audioBase64);
-                        };
-                        reader.readAsDataURL(audioBlob);
-                        stream.getTracks().forEach(track => track.stop()); // Free up the mic
+        const startRecording = async (e) => {
+            e.preventDefault(); // Prevents right-click menus on phones
+            if (isRecording) return;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+                
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                        await sendAudioMessage(event.target.result);
                     };
-                    
-                    mediaRecorder.start();
-                    isRecording = true;
-                    micBtn.innerText = "🛑";
-                    micBtn.style.background = "#ff7675";
-                    micBtn.style.color = "white";
-                    messageInput.placeholder = "🔴 Recording... Tap stop to send.";
-                    messageInput.disabled = true;
-                } catch (err) {
-                    alert("Please allow microphone access to send voice messages.");
-                }
-            } else {
+                    reader.readAsDataURL(audioBlob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                micBtn.classList.add('recording-active');
+                messageInput.placeholder = "🔴 Recording... Release to send";
+            } catch (err) { alert("Mic access needed!"); }
+        };
+
+        const stopRecording = (e) => {
+            e.preventDefault();
+            if (isRecording && mediaRecorder.state !== "inactive") {
                 mediaRecorder.stop();
                 isRecording = false;
-                micBtn.innerText = "🎙️";
-                micBtn.style.background = "#dfe6e9";
-                micBtn.style.color = "#2d3436";
-                messageInput.placeholder = "Type a message...";
-                messageInput.disabled = false;
+                micBtn.classList.remove('recording-active');
+                messageInput.placeholder = "Message...";
             }
         };
 
+        // Bind Hold-to-Talk for both Mobile Touch and Computer Mouse
+        micBtn.addEventListener('mousedown', startRecording);
+        micBtn.addEventListener('mouseup', stopRecording);
+        micBtn.addEventListener('mouseleave', stopRecording);
+        micBtn.addEventListener('touchstart', startRecording, {passive: false});
+        micBtn.addEventListener('touchend', stopRecording, {passive: false});
+
         async function sendAudioMessage(audioBase64) {
-            const now = Date.now();
-            const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const msgData = { 
-                sender: myName, 
-                time: timeString, 
-                timestamp: now,
-                audioUrl: audioBase64 
-            };
-            await push(dbRef(db, 'messages'), msgData);
+            const msgData = { sender: myName, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), timestamp: Date.now(), audioUrl: audioBase64 };
+            await push(dbRef(db, `rooms/${currentRoom}/messages`), msgData);
         }
 
-        // --- SEND TEXT/IMAGE CHAT ---
+        // --- TEXT CHAT & HTML INJECTION ---
         window.handleEnter = (e) => { if (e.key === 'Enter') sendMessage(); };
-
         window.sendMessage = async () => {
             const text = messageInput.value.trim();
             if (text === "" && !selectedImageBase64) return;
-            
-            const now = Date.now();
-            const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-            const msgData = { 
-                sender: myName, 
-                text: text, 
-                time: timeString, 
-                timestamp: now,
-                imageUrl: selectedImageBase64 || null 
-            };
-            
-            messageInput.value = "";
-            messageInput.placeholder = "Type a message...";
-            imageUpload.value = "";
-            selectedImageBase64 = null;
-            
-            set(dbRef(db, `typing/${myName}`), false);
-            clearTimeout(typingTimeout);
-            
-            await push(dbRef(db, 'messages'), msgData);
+            const msgData = { sender: myName, text: text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), timestamp: Date.now(), imageUrl: selectedImageBase64 || null };
+            messageInput.value = ""; messageInput.placeholder = "Message..."; document.getElementById('imageUpload').value = ""; selectedImageBase64 = null;
+            set(dbRef(db, `rooms/${currentRoom}/typing/${myName}`), false); clearTimeout(typingTimeout);
+            await push(dbRef(db, `rooms/${currentRoom}/messages`), msgData);
         };
 
         function startChatListening() {
-            onChildAdded(dbRef(db, 'messages'), (snapshot) => {
+            onChildAdded(dbRef(db, `rooms/${currentRoom}/messages`), (snapshot) => {
                 const data = snapshot.val();
-                const msgKey = snapshot.key;
-                
                 const wrapper = document.createElement('div');
                 wrapper.className = data.sender === myName ? "message-wrapper my-msg-wrapper" : "message-wrapper other-msg-wrapper";
-                wrapper.id = `msg-${msgKey}`; 
+                wrapper.id = `msg-${snapshot.key}`; 
 
                 const msgElement = document.createElement('div');
                 msgElement.className = data.sender === myName ? "message my-msg" : "message other-msg";
                 
-                let bubbleContent = '';
-                if (data.sender !== myName) {
-                    bubbleContent += `<div class="msg-sender-name">${data.sender}</div>`;
-                }
-                if (data.imageUrl) {
-                    bubbleContent += `<img src="${data.imageUrl}" class="chat-image" alt="Shared Image">`;
-                }
-                if (data.audioUrl) {
-                    bubbleContent += `<audio controls src="${data.audioUrl}" class="chat-audio"></audio>`;
-                }
-                if (data.text) {
-                    bubbleContent += `<div>${data.text}</div>`;
-                }
-                bubbleContent += `<span class="timestamp">${data.time}</span>`;
+                let html = '';
+                if (data.sender !== myName) html += `<div class="msg-sender-name">${data.sender}</div>`;
+                if (data.imageUrl) html += `<img src="${data.imageUrl}" class="chat-image">`;
+                if (data.audioUrl) html += `<audio controls src="${data.audioUrl}" class="chat-audio"></audio>`;
+                if (data.text) html += `<div>${data.text}</div>`;
+                html += `<span class="timestamp">${data.time}</span>`;
+                msgElement.innerHTML = html;
 
-                msgElement.innerHTML = bubbleContent;
-
-                let delBtnHtml = '';
-                if (isAdmin) {
-                    delBtnHtml = `<button class="del-btn" style="display:flex;" onclick="deleteSpecificMessage('${msgKey}')">🗑️</button>`;
-                }
-
-                if (data.sender === myName) {
-                    wrapper.innerHTML = `${delBtnHtml} ${msgElement.outerHTML}`;
-                } else {
-                    wrapper.innerHTML = `${msgElement.outerHTML} ${delBtnHtml}`;
-                }
-
-                chatBox.appendChild(wrapper);
-                chatBox.scrollTop = chatBox.scrollHeight;
+                let delBtn = isAdmin ? `<button class="del-btn" style="display:block;" onclick="deleteMsg('${snapshot.key}')">X</button>` : '';
+                wrapper.innerHTML = data.sender === myName ? `${delBtn} ${msgElement.outerHTML}` : `${msgElement.outerHTML} ${delBtn}`;
+                
+                chatBox.appendChild(wrapper); chatBox.scrollTop = chatBox.scrollHeight;
             });
-
-            onChildRemoved(dbRef(db, 'messages'), (snapshot) => {
-                const elementToRemove = document.getElementById(`msg-${snapshot.key}`);
-                if (elementToRemove) elementToRemove.remove();
+            onChildRemoved(dbRef(db, `rooms/${currentRoom}/messages`), (snapshot) => {
+                const el = document.getElementById(`msg-${snapshot.key}`); if (el) el.remove();
             });
         }
 
-        // --- ADMIN CONTROLS ---
-        window.deleteSpecificMessage = async (key) => {
-            if(confirm("Delete this message?")) await remove(dbRef(db, 'messages/' + key));
-        };
-        window.clearAllMessages = async () => {
-            if(confirm("Are you sure you want to wipe the chat history?")) await remove(dbRef(db, 'messages'));
-        };
+        window.deleteMsg = async (key) => { if(confirm("Delete?")) await remove(dbRef(db, `rooms/${currentRoom}/messages/${key}`)); };
+        window.clearAllMessages = async () => { if(confirm("Wipe room?")) await remove(dbRef(db, `rooms/${currentRoom}/messages`)); };
         window.clearOldMessages = async () => {
-            if(!confirm("Delete all messages older than 1 hour?")) return;
-            const snapshot = await get(dbRef(db, 'messages'));
-            if (snapshot.exists()) {
-                const now = Date.now();
-                const updates = {};
-                let count = 0;
-                snapshot.forEach(child => {
-                    if (now - child.val().timestamp > 3600000) { updates[child.key] = null; count++; }
-                });
-                if (count > 0) {
-                    await update(dbRef(db, 'messages'), updates);
-                    alert(`Deleted ${count} old messages.`);
-                } else {
-                    alert("No messages older than 1 hour found!");
-                }
+            const snap = await get(dbRef(db, `rooms/${currentRoom}/messages`));
+            if (snap.exists()) {
+                const now = Date.now(); const updates = {};
+                snap.forEach(child => { if (now - child.val().timestamp > 3600000) updates[child.key] = null; });
+                await update(dbRef(db, `rooms/${currentRoom}/messages`), updates); alert("Old messages deleted.");
             }
         };
 
-        // --- VIDEO CALL LOGIC (FIXED) ---
-        let pc, localStream, remoteStream;
-        const localVideo = document.getElementById('localVideo');
-        const remoteVideo = document.getElementById('remoteVideo');
+        // --- INSTA STYLE VIDEO PIP ---
+        let pc, localStream;
         const rtcConfig = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
 
-        async function setupMediaAndConnection() {
-            document.getElementById('videoArea').style.display = "flex";
-            
-            // Requesting user-facing camera explicitly to ensure video track is grabbed on phones
+        async function setupMedia() {
+            document.getElementById('videoArea').style.display = "flex"; // Full screen overlay
             localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
-            localVideo.srcObject = localStream;
-            
+            document.getElementById('localVideo').srcObject = localStream;
             pc = new RTCPeerConnection(rtcConfig);
-            
-            // Add tracks reliably
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-            
-            // The fixed ontrack event ensures the remote video stream is attached securely
-            pc.ontrack = (event) => {
-                if (remoteVideo.srcObject !== event.streams[0]) {
-                    remoteVideo.srcObject = event.streams[0];
-                }
-            };
+            pc.ontrack = (event) => { document.getElementById('remoteVideo').srcObject = event.streams[0]; };
         }
 
         function listenForCalls() {
-            onValue(dbRef(db, 'videocall/offer'), (snapshot) => {
+            onValue(dbRef(db, `rooms/${currentRoom}/videocall/offer`), (snapshot) => {
                 if (snapshot.exists()) {
                     document.getElementById('startCallBtn').classList.add('hidden');
                     document.getElementById('answerCallBtn').classList.remove('hidden');
@@ -704,51 +463,34 @@
         }
 
         window.startCall = async () => {
-            document.getElementById('startCallBtn').classList.add('hidden');
-            document.getElementById('hangupBtn').classList.remove('hidden');
-            await setupMediaAndConnection();
-            onDisconnect(dbRef(db, 'videocall')).remove();
-            pc.onicecandidate = event => { if(event.candidate) push(dbRef(db, 'videocall/callerCandidates'), event.candidate.toJSON()); };
-            const offerDescription = await pc.createOffer();
-            await pc.setLocalDescription(offerDescription);
-            await set(dbRef(db, 'videocall/offer'), { sdp: offerDescription.sdp, type: offerDescription.type });
-            onValue(dbRef(db, 'videocall/answer'), (snapshot) => {
-                const data = snapshot.val();
-                if (!pc.currentRemoteDescription && data) pc.setRemoteDescription(new RTCSessionDescription(data));
-            });
-            onChildAdded(dbRef(db, 'videocall/calleeCandidates'), (snapshot) => {
-                pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
-            });
+            await setupMedia();
+            onDisconnect(dbRef(db, `rooms/${currentRoom}/videocall`)).remove();
+            pc.onicecandidate = e => { if(e.candidate) push(dbRef(db, `rooms/${currentRoom}/videocall/callerCands`), e.candidate.toJSON()); };
+            const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
+            await set(dbRef(db, `rooms/${currentRoom}/videocall/offer`), { sdp: offer.sdp, type: offer.type });
+            onValue(dbRef(db, `rooms/${currentRoom}/videocall/answer`), (snap) => { if (!pc.currentRemoteDescription && snap.val()) pc.setRemoteDescription(new RTCSessionDescription(snap.val())); });
+            onChildAdded(dbRef(db, `rooms/${currentRoom}/videocall/calleeCands`), (snap) => { pc.addIceCandidate(new RTCIceCandidate(snap.val())); });
         };
 
         window.answerCall = async () => {
-            document.getElementById('answerCallBtn').classList.add('hidden');
-            document.getElementById('hangupBtn').classList.remove('hidden');
-            await setupMediaAndConnection();
-            pc.onicecandidate = event => { if(event.candidate) push(dbRef(db, 'videocall/calleeCandidates'), event.candidate.toJSON()); };
-            const offerSnapshot = await get(dbRef(db, 'videocall/offer'));
-            await pc.setRemoteDescription(new RTCSessionDescription(offerSnapshot.val()));
-            const answerDescription = await pc.createAnswer();
-            await pc.setLocalDescription(answerDescription);
-            await set(dbRef(db, 'videocall/answer'), { sdp: answerDescription.sdp, type: answerDescription.type });
-            onChildAdded(dbRef(db, 'videocall/callerCandidates'), (snapshot) => {
-                pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
-            });
+            await setupMedia();
+            pc.onicecandidate = e => { if(e.candidate) push(dbRef(db, `rooms/${currentRoom}/videocall/calleeCands`), e.candidate.toJSON()); };
+            const snap = await get(dbRef(db, `rooms/${currentRoom}/videocall/offer`));
+            await pc.setRemoteDescription(new RTCSessionDescription(snap.val()));
+            const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
+            await set(dbRef(db, `rooms/${currentRoom}/videocall/answer`), { sdp: answer.sdp, type: answer.type });
+            onChildAdded(dbRef(db, `rooms/${currentRoom}/videocall/callerCands`), (snap) => { pc.addIceCandidate(new RTCIceCandidate(snap.val())); });
         };
 
         window.hangup = async () => {
-            if(localStream) localStream.getTracks().forEach(track => track.stop());
-            if(remoteVideo.srcObject) remoteVideo.srcObject.getTracks().forEach(track => track.stop());
+            if(localStream) localStream.getTracks().forEach(t => t.stop());
+            if(document.getElementById('remoteVideo').srcObject) document.getElementById('remoteVideo').srcObject.getTracks().forEach(t => t.stop());
             if(pc) pc.close();
             document.getElementById('videoArea').style.display = "none";
-            document.getElementById('hangupBtn').classList.add('hidden');
-            document.getElementById('startCallBtn').classList.remove('hidden');
-            await remove(dbRef(db, 'videocall'));
+            await remove(dbRef(db, `rooms/${currentRoom}/videocall`));
         };
 
-        onValue(dbRef(db, 'videocall'), (snapshot) => {
-            if (!snapshot.exists() && document.getElementById('hangupBtn').className !== "hidden") hangup();
-        });
+        onValue(dbRef(db, `rooms/${currentRoom}/videocall`), (snap) => { if (!snap.exists() && document.getElementById('videoArea').style.display === "flex") hangup(); });
     </script>
 </body>
 </html>
