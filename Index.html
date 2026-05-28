@@ -169,12 +169,6 @@
         }
         #adminToolbar button:hover { background: #d63031; }
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
         /* Video Area */
         #videoArea {
             display: none;
@@ -182,7 +176,6 @@
             padding: 10px;
             justify-content: space-around;
         }
-
         video {
             width: 48%;
             background: #000;
@@ -219,6 +212,14 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
+        /* Image styling inside chat bubbles */
+        .chat-image {
+            max-width: 100%;
+            border-radius: 12px;
+            margin-bottom: 5px;
+            display: block;
+        }
+
         .msg-sender-name {
             font-size: 0.75rem;
             font-weight: bold;
@@ -245,22 +246,39 @@
             height: 25px;
             font-size: 0.7rem;
             cursor: pointer;
-            display: none; /* Hidden by default */
+            display: none;
             justify-content: center;
             align-items: center;
             padding: 0;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
-        /* Input Area */
+        /* Input Area with Image Upload */
         .input-area {
             display: flex;
             padding: 15px;
             background: rgba(255, 255, 255, 0.9);
             border-top: 1px solid rgba(0,0,0,0.05);
+            align-items: center;
         }
 
-        .input-area input {
+        .img-upload-btn {
+            background: #dfe6e9;
+            color: #2d3436;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: background 0.3s;
+        }
+        .img-upload-btn:hover { background: #b2bec3; }
+
+        .input-area input[type="text"] {
             flex: 1;
             padding: 15px 20px;
             border-radius: 30px;
@@ -269,7 +287,7 @@
             font-size: 1rem;
             background: #f8f9fa;
         }
-        .input-area input:focus { border-color: var(--primary); background: #fff; }
+        .input-area input[type="text"]:focus { border-color: var(--primary); background: #fff; }
 
         .input-area button {
             border-radius: 50%;
@@ -290,6 +308,7 @@
 
     <div class="app-container">
         
+        <!-- Join Screen -->
         <div id="loginScreen">
             <div class="login-box">
                 <h2>✨ Join Chat</h2>
@@ -307,6 +326,7 @@
             </div>
         </div>
 
+        <!-- Chat Screen -->
         <div id="chatScreen">
             <header>
                 <div class="header-top">
@@ -331,6 +351,10 @@
             <div id="chatBox"></div>
             
             <div class="input-area">
+                <!-- New Image Upload Button -->
+                <label for="imageUpload" class="img-upload-btn">📷</label>
+                <input type="file" id="imageUpload" accept="image/*" class="hidden">
+                
                 <input type="text" id="messageInput" placeholder="Type a message..." onkeypress="handleEnter(event)">
                 <button onclick="sendMessage()">➤</button>
             </div>
@@ -340,7 +364,6 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-        // Added 'update' and 'onChildRemoved' for the new admin deletion features
         import { getDatabase, ref as dbRef, push, onChildAdded, onChildRemoved, set, get, onValue, remove, update, onDisconnect } 
         from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 
@@ -358,13 +381,15 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // State Variables
         let myName = "";
         let isAdmin = false;
+        let selectedImageBase64 = null; // Stores the image before sending
+
         const chatBox = document.getElementById('chatBox');
         const messageInput = document.getElementById('messageInput');
+        const imageUpload = document.getElementById('imageUpload');
         
-        // --- AUTHENTICATION LOGIC ---
+        // --- AUTHENTICATION ---
         window.joinGuest = () => {
             const input = document.getElementById('guestName').value.trim();
             if (input === "") return alert("Please enter your name!");
@@ -393,48 +418,110 @@
             listenForCalls();
         }
 
-        // --- CHAT LOGIC ---
+        // --- IMAGE ATTACHMENT LOGIC ---
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_SIZE = 400; // Compresses image to max 400px so database is fast
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+                    } else {
+                        if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Convert to text string
+                    selectedImageBase64 = canvas.toDataURL('image/jpeg', 0.6);
+                    
+                    // Let the user know the image is ready to send
+                    messageInput.placeholder = "📷 Image attached! Add text or send...";
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // --- SEND CHAT LOGIC ---
         window.handleEnter = (e) => { if (e.key === 'Enter') sendMessage(); };
 
         window.sendMessage = async () => {
             const text = messageInput.value.trim();
-            if (text === "") return;
+            
+            // Don't send if there is no text AND no image
+            if (text === "" && !selectedImageBase64) return;
+            
             const now = Date.now();
             const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-            const msgData = { sender: myName, text: text, time: timeString, timestamp: now };
+            const msgData = { 
+                sender: myName, 
+                text: text, 
+                time: timeString, 
+                timestamp: now,
+                imageUrl: selectedImageBase64 || null // Add image to database!
+            };
+            
+            // Reset inputs instantly
             messageInput.value = "";
+            messageInput.placeholder = "Type a message...";
+            imageUpload.value = "";
+            selectedImageBase64 = null;
+            
             await push(dbRef(db, 'messages'), msgData);
         };
 
         function startChatListening() {
-            // Listen for NEW messages
             onChildAdded(dbRef(db, 'messages'), (snapshot) => {
                 const data = snapshot.val();
                 const msgKey = snapshot.key;
                 
-                // Wrapper to hold message and delete button together
                 const wrapper = document.createElement('div');
                 wrapper.className = data.sender === myName ? "message-wrapper my-msg-wrapper" : "message-wrapper other-msg-wrapper";
-                wrapper.id = `msg-${msgKey}`; // Give it an ID so we can remove it later
+                wrapper.id = `msg-${msgKey}`; 
 
-                // The message bubble
                 const msgElement = document.createElement('div');
                 msgElement.className = data.sender === myName ? "message my-msg" : "message other-msg";
                 
-                if (data.sender === myName) {
-                    msgElement.innerHTML = `${data.text} <span class="timestamp">${data.time}</span>`;
-                } else {
-                    msgElement.innerHTML = `<div class="msg-sender-name">${data.sender}</div>${data.text} <span class="timestamp">${data.time}</span>`;
+                // Build the HTML for inside the bubble
+                let bubbleContent = '';
+                
+                if (data.sender !== myName) {
+                    bubbleContent += `<div class="msg-sender-name">${data.sender}</div>`;
                 }
+                
+                // If the message has an image, show it!
+                if (data.imageUrl) {
+                    bubbleContent += `<img src="${data.imageUrl}" class="chat-image" alt="Shared Image">`;
+                }
+                
+                // Add the text
+                if (data.text) {
+                    bubbleContent += `<div>${data.text}</div>`;
+                }
+                
+                // Add the time
+                bubbleContent += `<span class="timestamp">${data.time}</span>`;
 
-                // Delete Button HTML
+                msgElement.innerHTML = bubbleContent;
+
                 let delBtnHtml = '';
                 if (isAdmin) {
                     delBtnHtml = `<button class="del-btn" style="display:flex;" onclick="deleteSpecificMessage('${msgKey}')">🗑️</button>`;
                 }
 
-                // Build the UI differently depending on who sent it
                 if (data.sender === myName) {
                     wrapper.innerHTML = `${delBtnHtml} ${msgElement.outerHTML}`;
                 } else {
@@ -445,45 +532,29 @@
                 chatBox.scrollTop = chatBox.scrollHeight;
             });
 
-            // Listen for DELETED messages (so they vanish from screen)
             onChildRemoved(dbRef(db, 'messages'), (snapshot) => {
                 const elementToRemove = document.getElementById(`msg-${snapshot.key}`);
-                if (elementToRemove) {
-                    elementToRemove.remove();
-                }
+                if (elementToRemove) elementToRemove.remove();
             });
         }
 
         // --- ADMIN DELETION LOGIC ---
         window.deleteSpecificMessage = async (key) => {
-            if(confirm("Delete this message?")) {
-                await remove(dbRef(db, 'messages/' + key));
-            }
+            if(confirm("Delete this message?")) await remove(dbRef(db, 'messages/' + key));
         };
-
         window.clearAllMessages = async () => {
-            if(confirm("Are you sure you want to completely wipe the chat history?")) {
-                await remove(dbRef(db, 'messages'));
-            }
+            if(confirm("Are you sure you want to wipe the chat history?")) await remove(dbRef(db, 'messages'));
         };
-
         window.clearOldMessages = async () => {
             if(!confirm("Delete all messages older than 1 hour?")) return;
-            
             const snapshot = await get(dbRef(db, 'messages'));
             if (snapshot.exists()) {
                 const now = Date.now();
                 const updates = {};
                 let count = 0;
-                
                 snapshot.forEach(child => {
-                    // 3600000 milliseconds = 1 hour
-                    if (now - child.val().timestamp > 3600000) {
-                        updates[child.key] = null; // Setting to null deletes it
-                        count++;
-                    }
+                    if (now - child.val().timestamp > 3600000) { updates[child.key] = null; count++; }
                 });
-                
                 if (count > 0) {
                     await update(dbRef(db, 'messages'), updates);
                     alert(`Deleted ${count} old messages.`);
@@ -492,7 +563,6 @@
                 }
             }
         };
-
 
         // --- VIDEO CALL LOGIC (WebRTC) ---
         let pc, localStream, remoteStream;
@@ -504,11 +574,9 @@
             document.getElementById('videoArea').style.display = "flex";
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             localVideo.srcObject = localStream;
-
             pc = new RTCPeerConnection(rtcConfig);
             remoteStream = new MediaStream();
             remoteVideo.srcObject = remoteStream;
-
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
             pc.ontrack = (event) => event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
         }
@@ -528,21 +596,16 @@
         window.startCall = async () => {
             document.getElementById('startCallBtn').classList.add('hidden');
             document.getElementById('hangupBtn').classList.remove('hidden');
-            
             await setupMediaAndConnection();
             onDisconnect(dbRef(db, 'videocall')).remove();
-
             pc.onicecandidate = event => { if(event.candidate) push(dbRef(db, 'videocall/callerCandidates'), event.candidate.toJSON()); };
-            
             const offerDescription = await pc.createOffer();
             await pc.setLocalDescription(offerDescription);
             await set(dbRef(db, 'videocall/offer'), { sdp: offerDescription.sdp, type: offerDescription.type });
-
             onValue(dbRef(db, 'videocall/answer'), (snapshot) => {
                 const data = snapshot.val();
                 if (!pc.currentRemoteDescription && data) pc.setRemoteDescription(new RTCSessionDescription(data));
             });
-
             onChildAdded(dbRef(db, 'videocall/calleeCandidates'), (snapshot) => {
                 pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
             });
@@ -551,18 +614,13 @@
         window.answerCall = async () => {
             document.getElementById('answerCallBtn').classList.add('hidden');
             document.getElementById('hangupBtn').classList.remove('hidden');
-
             await setupMediaAndConnection();
-
             pc.onicecandidate = event => { if(event.candidate) push(dbRef(db, 'videocall/calleeCandidates'), event.candidate.toJSON()); };
-
             const offerSnapshot = await get(dbRef(db, 'videocall/offer'));
             await pc.setRemoteDescription(new RTCSessionDescription(offerSnapshot.val()));
-
             const answerDescription = await pc.createAnswer();
             await pc.setLocalDescription(answerDescription);
             await set(dbRef(db, 'videocall/answer'), { sdp: answerDescription.sdp, type: answerDescription.type });
-
             onChildAdded(dbRef(db, 'videocall/callerCandidates'), (snapshot) => {
                 pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
             });
@@ -572,7 +630,6 @@
             if(localStream) localStream.getTracks().forEach(track => track.stop());
             if(remoteStream) remoteStream.getTracks().forEach(track => track.stop());
             if(pc) pc.close();
-
             document.getElementById('videoArea').style.display = "none";
             document.getElementById('hangupBtn').classList.add('hidden');
             document.getElementById('startCallBtn').classList.remove('hidden');
@@ -582,7 +639,6 @@
         onValue(dbRef(db, 'videocall'), (snapshot) => {
             if (!snapshot.exists() && document.getElementById('hangupBtn').className !== "hidden") hangup();
         });
-
     </script>
 </body>
 </html>
