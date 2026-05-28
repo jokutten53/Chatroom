@@ -183,7 +183,7 @@
             object-fit: cover;
         }
 
-        /* Typing Indicator Styling */
+        /* Typing Indicator */
         #typingIndicator {
             padding: 5px 20px;
             font-size: 0.85rem;
@@ -230,6 +230,13 @@
             margin-bottom: 5px;
             display: block;
         }
+        
+        .chat-audio {
+            max-width: 100%;
+            height: 40px;
+            margin-bottom: 5px;
+            outline: none;
+        }
 
         .msg-sender-name {
             font-size: 0.75rem;
@@ -273,7 +280,7 @@
             align-items: center;
         }
 
-        .img-upload-btn {
+        .action-btn {
             background: #dfe6e9;
             color: #2d3436;
             border-radius: 50%;
@@ -284,10 +291,12 @@
             align-items: center;
             font-size: 1.2rem;
             cursor: pointer;
-            margin-right: 10px;
+            margin-right: 8px;
             transition: background 0.3s;
+            border: none;
+            padding: 0;
         }
-        .img-upload-btn:hover { background: #b2bec3; }
+        .action-btn:hover { background: #b2bec3; }
 
         .input-area input[type="text"] {
             flex: 1;
@@ -300,16 +309,20 @@
         }
         .input-area input[type="text"]:focus { border-color: var(--primary); background: #fff; }
 
-        .input-area button {
+        .send-btn {
+            background: var(--primary);
+            color: white;
             border-radius: 50%;
             width: 50px;
             height: 50px;
-            margin-left: 10px;
+            margin-left: 8px;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 0;
             font-size: 1.2rem;
+            border: none;
+            cursor: pointer;
         }
 
         .hidden { display: none !important; }
@@ -319,7 +332,6 @@
 
     <div class="app-container">
         
-        <!-- Join Screen -->
         <div id="loginScreen">
             <div class="login-box">
                 <h2>✨ Join Chat</h2>
@@ -337,7 +349,6 @@
             </div>
         </div>
 
-        <!-- Chat Screen -->
         <div id="chatScreen">
             <header>
                 <div class="header-top">
@@ -361,15 +372,16 @@
 
             <div id="chatBox"></div>
             
-            <!-- Live Typing Indicator Banner -->
             <div id="typingIndicator"></div>
             
             <div class="input-area">
-                <label for="imageUpload" class="img-upload-btn">📷</label>
+                <label for="imageUpload" class="action-btn">📷</label>
                 <input type="file" id="imageUpload" accept="image/*" class="hidden">
                 
+                <button id="micBtn" class="action-btn" onclick="toggleRecording()">🎙️</button>
+                
                 <input type="text" id="messageInput" placeholder="Type a message..." onkeypress="handleEnter(event)">
-                <button onclick="sendMessage()">➤</button>
+                <button class="send-btn" onclick="sendMessage()">➤</button>
             </div>
         </div>
 
@@ -403,6 +415,7 @@
         const messageInput = document.getElementById('messageInput');
         const imageUpload = document.getElementById('imageUpload');
         const typingIndicator = document.getElementById('typingIndicator');
+        const micBtn = document.getElementById('micBtn');
         
         // --- AUTHENTICATION ---
         window.joinGuest = () => {
@@ -431,27 +444,16 @@
             document.getElementById('chatScreen').style.display = "flex";
             startChatListening();
             listenForCalls();
-            listenForTyping(); // Start monitoring typing changes
-            
-            // Clean up typing status if user suddenly closes window
+            listenForTyping();
             onDisconnect(dbRef(db, `typing/${myName}`)).remove();
         }
 
-        // --- TYPING INDICATOR CONTROLLER ---
-        // Triggers whenever user strikes a key in the text field
+        // --- TYPING INDICATOR ---
         messageInput.addEventListener('input', () => {
             if (myName === "") return;
-
-            // Instantly update database that we are typing
             set(dbRef(db, `typing/${myName}`), true);
-
-            // Clear any countdown that was running previously
             clearTimeout(typingTimeout);
-
-            // If user doesn't press another key within 2.5 seconds, set status to false
-            typingTimeout = setTimeout(() => {
-                set(dbRef(db, `typing/${myName}`), false);
-            }, 2500);
+            typingTimeout = setTimeout(() => { set(dbRef(db, `typing/${myName}`), false); }, 2500);
         });
 
         function listenForTyping() {
@@ -459,30 +461,21 @@
                 if (snapshot.exists()) {
                     const typingUsers = snapshot.val();
                     let currentTypers = [];
-
                     for (let user in typingUsers) {
-                        // Check if someone ELSE is typing right now
-                        if (user !== myName && typingUsers[user] === true) {
-                            currentTypers.push(user);
-                        }
+                        if (user !== myName && typingUsers[user] === true) currentTypers.push(user);
                     }
-
-                    if (currentTypers.length > 0) {
-                        typingIndicator.innerHTML = `💬 ${currentTypers.join(', ')} is typing...`;
-                    } else {
-                        typingIndicator.innerHTML = ''; // Hide banner if empty
-                    }
+                    if (currentTypers.length > 0) typingIndicator.innerHTML = `💬 ${currentTypers.join(', ')} is typing...`;
+                    else typingIndicator.innerHTML = ''; 
                 } else {
                     typingIndicator.innerHTML = '';
                 }
             });
         }
 
-        // --- IMAGE ATTACHMENT LOGIC ---
+        // --- IMAGE ATTACHMENT ---
         imageUpload.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(event) {
                 const img = new Image();
@@ -491,13 +484,11 @@
                     const MAX_SIZE = 400; 
                     let width = img.width;
                     let height = img.height;
-
                     if (width > height) {
                         if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
                     } else {
                         if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
                     }
-
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
@@ -511,7 +502,65 @@
             reader.readAsDataURL(file);
         });
 
-        // --- SEND CHAT LOGIC ---
+        // --- VOICE MESSAGING ---
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        window.toggleRecording = async () => {
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    
+                    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+                    
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const reader = new FileReader();
+                        reader.onload = async (event) => {
+                            const audioBase64 = event.target.result;
+                            await sendAudioMessage(audioBase64);
+                        };
+                        reader.readAsDataURL(audioBlob);
+                        stream.getTracks().forEach(track => track.stop()); // Free up the mic
+                    };
+                    
+                    mediaRecorder.start();
+                    isRecording = true;
+                    micBtn.innerText = "🛑";
+                    micBtn.style.background = "#ff7675";
+                    micBtn.style.color = "white";
+                    messageInput.placeholder = "🔴 Recording... Tap stop to send.";
+                    messageInput.disabled = true;
+                } catch (err) {
+                    alert("Please allow microphone access to send voice messages.");
+                }
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                micBtn.innerText = "🎙️";
+                micBtn.style.background = "#dfe6e9";
+                micBtn.style.color = "#2d3436";
+                messageInput.placeholder = "Type a message...";
+                messageInput.disabled = false;
+            }
+        };
+
+        async function sendAudioMessage(audioBase64) {
+            const now = Date.now();
+            const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const msgData = { 
+                sender: myName, 
+                time: timeString, 
+                timestamp: now,
+                audioUrl: audioBase64 
+            };
+            await push(dbRef(db, 'messages'), msgData);
+        }
+
+        // --- SEND TEXT/IMAGE CHAT ---
         window.handleEnter = (e) => { if (e.key === 'Enter') sendMessage(); };
 
         window.sendMessage = async () => {
@@ -534,7 +583,6 @@
             imageUpload.value = "";
             selectedImageBase64 = null;
             
-            // Instantly tell database we are no longer typing since message is sent
             set(dbRef(db, `typing/${myName}`), false);
             clearTimeout(typingTimeout);
             
@@ -559,6 +607,9 @@
                 }
                 if (data.imageUrl) {
                     bubbleContent += `<img src="${data.imageUrl}" class="chat-image" alt="Shared Image">`;
+                }
+                if (data.audioUrl) {
+                    bubbleContent += `<audio controls src="${data.audioUrl}" class="chat-audio"></audio>`;
                 }
                 if (data.text) {
                     bubbleContent += `<div>${data.text}</div>`;
@@ -588,7 +639,7 @@
             });
         }
 
-        // --- ADMIN DELETION LOGIC ---
+        // --- ADMIN CONTROLS ---
         window.deleteSpecificMessage = async (key) => {
             if(confirm("Delete this message?")) await remove(dbRef(db, 'messages/' + key));
         };
@@ -614,7 +665,7 @@
             }
         };
 
-        // --- VIDEO CALL LOGIC ---
+        // --- VIDEO CALL LOGIC (FIXED) ---
         let pc, localStream, remoteStream;
         const localVideo = document.getElementById('localVideo');
         const remoteVideo = document.getElementById('remoteVideo');
@@ -622,13 +673,22 @@
 
         async function setupMediaAndConnection() {
             document.getElementById('videoArea').style.display = "flex";
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            
+            // Requesting user-facing camera explicitly to ensure video track is grabbed on phones
+            localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
             localVideo.srcObject = localStream;
+            
             pc = new RTCPeerConnection(rtcConfig);
-            remoteStream = new MediaStream();
-            remoteVideo.srcObject = remoteStream;
+            
+            // Add tracks reliably
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-            pc.ontrack = (event) => event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
+            
+            // The fixed ontrack event ensures the remote video stream is attached securely
+            pc.ontrack = (event) => {
+                if (remoteVideo.srcObject !== event.streams[0]) {
+                    remoteVideo.srcObject = event.streams[0];
+                }
+            };
         }
 
         function listenForCalls() {
@@ -678,7 +738,7 @@
 
         window.hangup = async () => {
             if(localStream) localStream.getTracks().forEach(track => track.stop());
-            if(remoteStream) remoteStream.getTracks().forEach(track => track.stop());
+            if(remoteVideo.srcObject) remoteVideo.srcObject.getTracks().forEach(track => track.stop());
             if(pc) pc.close();
             document.getElementById('videoArea').style.display = "none";
             document.getElementById('hangupBtn').classList.add('hidden');
