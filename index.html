@@ -35,7 +35,6 @@
             height: 100%; padding: 2rem; text-align: center; background: white;
         }
         .login-box { width: 100%; max-width: 300px; }
-        .login-box img { width: 80px; margin-bottom: 10px; }
         .login-box h2 { color: var(--text-dark); margin-bottom: 20px; font-weight: 600; }
         
         select, input {
@@ -107,6 +106,11 @@
             border-radius: 50%; border: none; font-size: 1.5rem; cursor: pointer;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
+        #callStatus {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.6); color: white; padding: 5px 15px;
+            border-radius: 20px; font-size: 0.9rem; z-index: 103;
+        }
 
         /* --- CHAT BOX --- */
         #chatBox {
@@ -136,10 +140,17 @@
 
         .timestamp { font-size: 0.65rem; color: #a8a8a8; text-align: right; margin-top: 5px; display: block; }
 
-        .del-btn {
-            background: #ff7675; color: white; border: none; border-radius: 50%;
-            width: 20px; height: 20px; font-size: 0.6rem; cursor: pointer; display: none;
+        /* Delete Options Styling */
+        .msg-options {
+            display: flex; flex-direction: column; gap: 5px;
+            opacity: 0.7; transition: 0.3s; align-items: center;
         }
+        .msg-options:hover { opacity: 1; }
+        .msg-options button {
+            background: none; border: none; cursor: pointer; font-size: 1rem; 
+            padding: 0; filter: grayscale(20%); transition: 0.2s;
+        }
+        .msg-options button:hover { transform: scale(1.2); filter: grayscale(0%); }
 
         /* --- INPUT AREA --- */
         .input-area {
@@ -156,7 +167,6 @@
         }
         .input-area input[type="text"]:focus { border-color: #a8a8a8; }
         
-        /* Mic Button Effects */
         #micBtn { transition: 0.2s transform; user-select: none; -webkit-user-select: none; }
         .recording-active { color: #ff4757 !important; transform: scale(1.3); }
 
@@ -168,6 +178,7 @@
 
     <div class="app-container">
         
+        <!-- Login Screen -->
         <div id="loginScreen">
             <div class="login-box">
                 <h2>Chat Room</h2>
@@ -191,6 +202,7 @@
             <div class="credit-footer">Made by <span>Joyal</span></div>
         </div>
 
+        <!-- Chat Screen -->
         <div id="chatScreen">
             <header>
                 <div class="header-top">
@@ -200,6 +212,7 @@
                         <button id="answerCallBtn" onclick="answerCall()" class="hidden">📞 Answer Call</button>
                     </div>
                 </div>
+                <!-- Admin Tools -->
                 <div id="adminToolbar">
                     <span style="font-size:0.8rem; font-weight:bold; color:#ff4757;">Admin Controls:</span>
                     <button onclick="clearAllMessages()">Wipe Chat</button>
@@ -207,7 +220,9 @@
                 </div>
             </header>
             
+            <!-- Video Overlay -->
             <div id="videoArea">
+                <div id="callStatus">Checking camera...</div>
                 <video id="remoteVideo" autoplay playsinline></video>
                 <video id="localVideo" autoplay muted playsinline></video>
                 <div class="call-controls">
@@ -221,9 +236,7 @@
             <div class="input-area">
                 <label for="imageUpload" class="action-icon">📷</label>
                 <input type="file" id="imageUpload" accept="image/*" class="hidden">
-                
                 <button id="micBtn" class="action-icon">🎙️</button>
-                
                 <input type="text" id="messageInput" placeholder="Message..." onkeypress="handleEnter(event)">
                 <button class="send-btn" onclick="sendMessage()">Send</button>
             </div>
@@ -259,6 +272,7 @@
         const messageInput = document.getElementById('messageInput');
         const typingIndicator = document.getElementById('typingIndicator');
         const micBtn = document.getElementById('micBtn');
+        const callStatus = document.getElementById('callStatus');
         
         // --- AUTH & ROOMS ---
         window.joinGuest = () => {
@@ -340,7 +354,7 @@
         let isRecording = false;
 
         const startRecording = async (e) => {
-            e.preventDefault(); // Prevents right-click menus on phones
+            e.preventDefault(); 
             if (isRecording) return;
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -351,9 +365,7 @@
                 mediaRecorder.onstop = () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     const reader = new FileReader();
-                    reader.onload = async (event) => {
-                        await sendAudioMessage(event.target.result);
-                    };
+                    reader.onload = async (event) => { await sendAudioMessage(event.target.result); };
                     reader.readAsDataURL(audioBlob);
                     stream.getTracks().forEach(track => track.stop());
                 };
@@ -375,7 +387,6 @@
             }
         };
 
-        // Bind Hold-to-Talk for both Mobile Touch and Computer Mouse
         micBtn.addEventListener('mousedown', startRecording);
         micBtn.addEventListener('mouseup', stopRecording);
         micBtn.addEventListener('mouseleave', stopRecording);
@@ -387,7 +398,7 @@
             await push(dbRef(db, `rooms/${currentRoom}/messages`), msgData);
         }
 
-        // --- TEXT CHAT & HTML INJECTION ---
+        // --- TEXT CHAT & DELETE LOGIC ---
         window.handleEnter = (e) => { if (e.key === 'Enter') sendMessage(); };
         window.sendMessage = async () => {
             const text = messageInput.value.trim();
@@ -416,8 +427,28 @@
                 html += `<span class="timestamp">${data.time}</span>`;
                 msgElement.innerHTML = html;
 
-                let delBtn = isAdmin ? `<button class="del-btn" style="display:block;" onclick="deleteMsg('${snapshot.key}')">X</button>` : '';
-                wrapper.innerHTML = data.sender === myName ? `${delBtn} ${msgElement.outerHTML}` : `${msgElement.outerHTML} ${delBtn}`;
+                // --- NEW DELETE LOGIC UI ---
+                let deleteHtml = '';
+                if (data.sender === myName) {
+                    // Senders can delete for themselves or for everyone
+                    deleteHtml = `
+                        <div class="msg-options">
+                            <button title="Delete for Everyone" onclick="deleteForEveryone('${snapshot.key}')">🗑️</button>
+                            <button title="Delete for Me" onclick="deleteForMe('${snapshot.key}')">🚫</button>
+                        </div>
+                    `;
+                    wrapper.innerHTML = `${deleteHtml} ${msgElement.outerHTML}`;
+                } else if (isAdmin) {
+                    // Admins get a special override to wipe any message for everyone
+                    deleteHtml = `
+                        <div class="msg-options">
+                            <button title="Admin Delete" onclick="deleteForEveryone('${snapshot.key}')">🗑️</button>
+                        </div>
+                    `;
+                    wrapper.innerHTML = `${msgElement.outerHTML} ${deleteHtml}`;
+                } else {
+                    wrapper.innerHTML = `${msgElement.outerHTML}`;
+                }
                 
                 chatBox.appendChild(wrapper); chatBox.scrollTop = chatBox.scrollHeight;
             });
@@ -426,7 +457,17 @@
             });
         }
 
-        window.deleteMsg = async (key) => { if(confirm("Delete?")) await remove(dbRef(db, `rooms/${currentRoom}/messages/${key}`)); };
+        // Deletes from Database (Everyone)
+        window.deleteForEveryone = async (key) => { 
+            if(confirm("Delete this message for EVERYONE?")) await remove(dbRef(db, `rooms/${currentRoom}/messages/${key}`)); 
+        };
+        // Deletes from local screen (Just you)
+        window.deleteForMe = (key) => {
+            if(confirm("Delete this message just for YOU? (Others will still see it)")) {
+                const el = document.getElementById(`msg-${key}`); if (el) el.remove();
+            }
+        };
+
         window.clearAllMessages = async () => { if(confirm("Wipe room?")) await remove(dbRef(db, `rooms/${currentRoom}/messages`)); };
         window.clearOldMessages = async () => {
             const snap = await get(dbRef(db, `rooms/${currentRoom}/messages`));
@@ -437,17 +478,35 @@
             }
         };
 
-        // --- INSTA STYLE VIDEO PIP ---
+        // --- UPGRADED WEB RTC VIDEO LOGIC ---
         let pc, localStream;
         const rtcConfig = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
 
         async function setupMedia() {
-            document.getElementById('videoArea').style.display = "flex"; // Full screen overlay
-            localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
-            document.getElementById('localVideo').srcObject = localStream;
-            pc = new RTCPeerConnection(rtcConfig);
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-            pc.ontrack = (event) => { document.getElementById('remoteVideo').srcObject = event.streams[0]; };
+            document.getElementById('videoArea').style.display = "flex"; 
+            callStatus.innerText = "Connecting camera...";
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user", width: { ideal: 640 } }, 
+                    audio: { echoCancellation: true, noiseSuppression: true } 
+                });
+                document.getElementById('localVideo').srcObject = localStream;
+                callStatus.innerText = "Waiting for other person...";
+                
+                pc = new RTCPeerConnection(rtcConfig);
+                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+                pc.ontrack = (event) => { 
+                    document.getElementById('remoteVideo').srcObject = event.streams[0]; 
+                    callStatus.innerText = ""; // Hide status when connected
+                };
+
+                pc.oniceconnectionstatechange = () => {
+                    if(pc.iceConnectionState === 'failed') callStatus.innerText = "Connection Failed (Network Blocked)";
+                };
+            } catch (err) {
+                alert("Camera Error: " + err.message);
+                hangup();
+            }
         }
 
         function listenForCalls() {
@@ -464,6 +523,7 @@
 
         window.startCall = async () => {
             await setupMedia();
+            if(!pc) return;
             onDisconnect(dbRef(db, `rooms/${currentRoom}/videocall`)).remove();
             pc.onicecandidate = e => { if(e.candidate) push(dbRef(db, `rooms/${currentRoom}/videocall/callerCands`), e.candidate.toJSON()); };
             const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
@@ -474,6 +534,7 @@
 
         window.answerCall = async () => {
             await setupMedia();
+            if(!pc) return;
             pc.onicecandidate = e => { if(e.candidate) push(dbRef(db, `rooms/${currentRoom}/videocall/calleeCands`), e.candidate.toJSON()); };
             const snap = await get(dbRef(db, `rooms/${currentRoom}/videocall/offer`));
             await pc.setRemoteDescription(new RTCSessionDescription(snap.val()));
@@ -487,6 +548,7 @@
             if(document.getElementById('remoteVideo').srcObject) document.getElementById('remoteVideo').srcObject.getTracks().forEach(t => t.stop());
             if(pc) pc.close();
             document.getElementById('videoArea').style.display = "none";
+            callStatus.innerText = "";
             await remove(dbRef(db, `rooms/${currentRoom}/videocall`));
         };
 
